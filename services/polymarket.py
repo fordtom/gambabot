@@ -10,16 +10,57 @@ from models import MarketInfo
 GAMMA_API = "https://gamma-api.polymarket.com"
 
 
-def parse_polymarket_url(url: str) -> Optional[str]:
-    match = re.search(r"polymarket\.com/event/[^/]+/([^/?#]+)", url)
+def parse_polymarket_url(url: str) -> tuple[Optional[str], Optional[str]]:
+    """Parse a Polymarket URL, returning (event_slug, market_slug).
+
+    For event/market URLs: returns (event_slug, market_slug)
+    For event-only URLs: returns (event_slug, None)
+    For market URLs: returns (None, market_slug)
+    """
+    # Full event/market URL: polymarket.com/event/{event}/{market}
+    match = re.search(r"polymarket\.com/event/([^/]+)/([^/?#]+)", url)
     if match:
-        return match.group(1)
-    
+        return (match.group(1), match.group(2))
+
+    # Event-only URL: polymarket.com/event/{event}
+    match = re.search(r"polymarket\.com/event/([^/?#]+)", url)
+    if match:
+        return (match.group(1), None)
+
+    # Direct market URL: polymarket.com/market/{market}
     match = re.search(r"polymarket\.com/market/([^/?#]+)", url)
     if match:
-        return match.group(1)
-    
-    return None
+        return (None, match.group(1))
+
+    return (None, None)
+
+
+async def get_event_market_slug(event_slug: str) -> Optional[str]:
+    """Fetch event by slug, return market slug if it's a simple yes/no event."""
+    async with aiohttp.ClientSession() as session:
+        async with session.get(f"{GAMMA_API}/events/slug/{event_slug}") as resp:
+            if resp.status != 200:
+                return None
+            data = await resp.json()
+
+    if not data:
+        return None
+
+    markets = data.get("markets", [])
+    if len(markets) != 1:
+        # Multi-outcome event; user must specify which market
+        return None
+
+    market = markets[0]
+    outcomes = market.get("outcomes")
+    if outcomes:
+        if isinstance(outcomes, str):
+            outcomes = json.loads(outcomes)
+        # Only simple yes/no markets
+        if outcomes != ["Yes", "No"]:
+            return None
+
+    return market.get("slug")
 
 
 async def get_market_info(market_slug: str) -> Optional[MarketInfo]:
@@ -28,10 +69,10 @@ async def get_market_info(market_slug: str) -> Optional[MarketInfo]:
             if resp.status != 200:
                 return None
             data = await resp.json()
-            
+
             if not data or not isinstance(data, list) or len(data) == 0:
                 return None
-            
+
             return _parse_market_data(data[0])
 
 

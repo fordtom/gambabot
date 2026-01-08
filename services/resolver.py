@@ -5,10 +5,17 @@ from services import database, polymarket
 
 
 async def get_market_info(url: str) -> Optional[MarketInfo]:
-    poly_slug = polymarket.parse_polymarket_url(url)
-    if poly_slug:
-        return await polymarket.get_market_info(poly_slug)
-    
+    event_slug, market_slug = polymarket.parse_polymarket_url(url)
+
+    if market_slug:
+        return await polymarket.get_market_info(market_slug)
+
+    if event_slug:
+        # Event-only URL; try to resolve to single yes/no market
+        resolved_slug = await polymarket.get_event_market_slug(event_slug)
+        if resolved_slug:
+            return await polymarket.get_market_info(resolved_slug)
+
     return None
 
 
