@@ -3,7 +3,7 @@ from discord import app_commands
 
 from config import DISCORD_TOKEN
 from services import database
-from commands import register, bet, bets, leaderboard
+from commands import register, bet, bets, leaderboard, rules
 
 
 class GambaBot(discord.Client):
@@ -17,6 +17,7 @@ class GambaBot(discord.Client):
         bet.setup(self.tree)
         bets.setup(self.tree)
         leaderboard.setup(self.tree)
+        rules.setup(self.tree)
         
         await self.tree.sync()
         print("Commands synced!")
