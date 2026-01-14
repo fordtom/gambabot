@@ -165,28 +165,44 @@ def get_all_unresolved_bets() -> list[Bet]:
 
 
 def get_leaderboard(year: int) -> list[dict]:
+    now = datetime.now()
+    current_month = now.month
+
     conn = get_connection()
     rows = conn.execute(
         """
-        SELECT 
+        SELECT
+            p.id as player_id,
             p.discord_id,
             COALESCE(SUM(CASE WHEN b.outcome = 'win' THEN b.payout_cents ELSE 0 END), 0) as total_cents,
-            COALESCE(MAX(CASE WHEN b.outcome = 'win' THEN b.payout_cents ELSE 0 END), 0) as biggest_win_cents
+            COALESCE(MAX(CASE WHEN b.outcome = 'win' THEN b.payout_cents ELSE 0 END), 0) as biggest_win_cents,
+            COALESCE(SUM(CASE WHEN b.outcome IS NULL THEN 10000 / b.price_cents ELSE 0 END), 0) as pending_potential_cents,
+            COUNT(CASE WHEN b.outcome IS NULL THEN 1 END) as pending_count,
+            COUNT(CASE WHEN b.placed_year = ? AND b.placed_month = ? THEN 1 END) as bets_this_month
         FROM players p
         LEFT JOIN bets b ON p.id = b.player_id
         WHERE p.year = ?
         GROUP BY p.id, p.discord_id
         ORDER BY total_cents DESC, biggest_win_cents DESC
         """,
-        (year,)
+        (year, current_month, year)
     ).fetchall()
     conn.close()
-    
+
+    # Calculate remaining bets based on current month
+    if current_month == 1:
+        max_bets = 16
+    else:
+        max_bets = 1
+
     return [
         {
             "discord_id": row["discord_id"],
             "total_cents": row["total_cents"],
-            "biggest_win_cents": row["biggest_win_cents"]
+            "biggest_win_cents": row["biggest_win_cents"],
+            "pending_count": row["pending_count"],
+            "max_return_cents": row["total_cents"] + row["pending_potential_cents"],
+            "remaining_bets": max(0, max_bets - row["bets_this_month"])
         }
         for row in rows
     ]
