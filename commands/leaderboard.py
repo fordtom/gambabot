@@ -17,15 +17,12 @@ async def leaderboard(interaction: discord.Interaction):
 
     if not rankings:
         await interaction.followup.send(
-            f"📊 **Leaderboard {year}**\n"
-            f"No players registered yet.",
-            ephemeral=False
+            f"📊 **Leaderboard {year}**\nNo players registered yet.", ephemeral=False
         )
         return
 
     embed = discord.Embed(
-        title=f"🏆 GambaBot Leaderboard {year}",
-        color=discord.Color.gold()
+        title=f"🏆 GambaBot Leaderboard {year}", color=discord.Color.gold()
     )
 
     # Build table rows
@@ -47,15 +44,17 @@ async def leaderboard(interaction: discord.Interaction):
         else:
             medal = f"`{i}.`"
 
-        rows.append({
-            "medal": medal,
-            "discord_id": discord_id,
-            "total": total,
-            "biggest": biggest,
-            "remaining": remaining,
-            "max_return": max_return,
-            "pending": pending
-        })
+        rows.append(
+            {
+                "medal": medal,
+                "discord_id": discord_id,
+                "total": total,
+                "biggest": biggest,
+                "remaining": remaining,
+                "max_return": max_return,
+                "pending": pending,
+            }
+        )
 
     # Format each player on one line with stats
     lines = []

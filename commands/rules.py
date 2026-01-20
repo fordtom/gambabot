@@ -36,9 +36,7 @@ RULES_TEXT = """
 
 async def rules(interaction: discord.Interaction):
     embed = discord.Embed(
-        title="🎰 GambaBot",
-        description=RULES_TEXT,
-        color=discord.Color.blue()
+        title="🎰 GambaBot", description=RULES_TEXT, color=discord.Color.blue()
     )
     await interaction.response.send_message(embed=embed, ephemeral=True)
 

@@ -82,25 +82,25 @@ async def check_resolution(market_id: str) -> Optional[str]:
             if resp.status != 200:
                 return None
             data = await resp.json()
-    
+
     if not data:
         return None
-    
+
     resolution_status = data.get("umaResolutionStatus")
     if resolution_status != "resolved":
         return None
-    
+
     outcome_prices = data.get("outcomePrices")
     if not outcome_prices:
         return "void"
-    
+
     try:
         if isinstance(outcome_prices, str):
             outcome_prices = json.loads(outcome_prices)
-        
+
         yes_price = float(outcome_prices[0])
         no_price = float(outcome_prices[1])
-        
+
         if yes_price > no_price:
             return "yes"
         elif no_price > yes_price:
@@ -115,39 +115,39 @@ def _parse_market_data(market: dict) -> Optional[MarketInfo]:
     market_id = market.get("id")
     if not market_id:
         return None
-    
+
     title = market.get("question") or market.get("title")
     if not title:
         return None
-    
+
     outcome_prices = market.get("outcomePrices")
     if not outcome_prices:
         return None
-    
+
     try:
         if isinstance(outcome_prices, str):
             outcome_prices = json.loads(outcome_prices)
-        
+
         yes_price = float(outcome_prices[0])
         no_price = float(outcome_prices[1])
-        
+
         yes_cents = math.ceil(yes_price * 100)
         no_cents = math.ceil(no_price * 100)
     except (ValueError, IndexError, TypeError):
         return None
-    
+
     if yes_cents <= 0 or no_cents <= 0:
         return None
-    
+
     closed = market.get("closed", False)
-    
+
     resolution = None
     if closed:
         if yes_cents >= 99:
             resolution = "yes"
         elif yes_cents <= 1:
             resolution = "no"
-    
+
     return MarketInfo(
         platform="polymarket",
         market_id=market_id,
@@ -155,5 +155,5 @@ def _parse_market_data(market: dict) -> Optional[MarketInfo]:
         yes_cents=yes_cents,
         no_cents=no_cents,
         resolved=closed,
-        resolution=resolution
+        resolution=resolution,
     )

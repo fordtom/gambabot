@@ -20,6 +20,7 @@ class Bet:
     market_title: Optional[str]
     position: str
     price_cents: int
+    stake_cents: int
     placed_at: datetime
     placed_year: int
     placed_month: int

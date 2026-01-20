@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS bets (
     market_title TEXT,
     position TEXT NOT NULL,
     price_cents INTEGER NOT NULL,
+    stake_cents INTEGER NOT NULL DEFAULT 100,
     placed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     placed_year INTEGER NOT NULL,
     placed_month INTEGER NOT NULL,
