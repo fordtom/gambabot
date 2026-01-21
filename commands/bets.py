@@ -42,6 +42,12 @@ async def bets(interaction: discord.Interaction):
     wins = [b for b in player_bets if b.outcome == "win"]
     losses = [b for b in player_bets if b.outcome == "loss"]
 
+    # Max return = current winnings + potential from pending bets
+    pending_potential_cents = sum(
+        b.stake_cents * 100 // b.price_cents for b in pending
+    )
+    max_return_cents = total_cents + pending_potential_cents
+
     embed = discord.Embed(title=f"📋 Your Bets ({year})", color=discord.Color.blue())
 
     embed.add_field(
@@ -49,33 +55,55 @@ async def bets(interaction: discord.Interaction):
         value=(
             f"Total Winnings: **${total_cents / 100:.2f}**\n"
             f"Biggest Win: **${biggest_cents / 100:.2f}**\n"
+            f"Max Return: **${max_return_cents / 100:.2f}**\n"
             f"Bets Remaining: **{remaining}**"
         ),
         inline=False,
     )
 
+    def add_chunked_fields(embed, name: str, lines: list[str]):
+        """Add fields, splitting into multiple if content exceeds 1024 chars."""
+        if not lines:
+            return
+        chunks = []
+        current_chunk = []
+        current_len = 0
+        for line in lines:
+            line_len = len(line) + 1  # +1 for newline
+            if current_len + line_len > 1000:  # leave margin
+                chunks.append("\n".join(current_chunk))
+                current_chunk = [line]
+                current_len = line_len
+            else:
+                current_chunk.append(line)
+                current_len += line_len
+        if current_chunk:
+            chunks.append("\n".join(current_chunk))
+
+        for i, chunk in enumerate(chunks):
+            field_name = name if len(chunks) == 1 else f"{name} ({i + 1}/{len(chunks)})"
+            embed.add_field(name=field_name, value=chunk, inline=False)
+
     if pending:
-        pending_text = "\n".join(
-            f"• ${b.stake_cents / 100:.0f} {b.position.upper()} @ ${b.price_cents / 100:.2f} - {b.market_title[:45]}..."
-            for b in pending[:5]
-        )
-        if len(pending) > 5:
-            pending_text += f"\n... and {len(pending) - 5} more"
-        embed.add_field(
-            name=f"⏳ Pending ({len(pending)})", value=pending_text, inline=False
-        )
+        pending_lines = [
+            f"• ${b.stake_cents / 100:.0f} {b.position.upper()} @ ${b.price_cents / 100:.2f} - {b.market_title}"
+            for b in pending
+        ]
+        add_chunked_fields(embed, f"⏳ Pending ({len(pending)})", pending_lines)
 
     if wins:
-        wins_text = "\n".join(
-            f"• +${b.payout_cents / 100:.2f} (${b.stake_cents / 100:.0f} {b.position.upper()} @ ${b.price_cents / 100:.2f})"
-            for b in wins[:5]
-        )
-        if len(wins) > 5:
-            wins_text += f"\n... and {len(wins) - 5} more"
-        embed.add_field(name=f"✅ Wins ({len(wins)})", value=wins_text, inline=False)
+        wins_lines = [
+            f"• +${b.payout_cents / 100:.2f} (${b.stake_cents / 100:.0f} {b.position.upper()} @ ${b.price_cents / 100:.2f}) - {b.market_title}"
+            for b in wins
+        ]
+        add_chunked_fields(embed, f"✅ Wins ({len(wins)})", wins_lines)
 
     if losses:
-        embed.add_field(name=f"❌ Losses", value=f"{len(losses)} bet(s)", inline=False)
+        losses_lines = [
+            f"• -${b.stake_cents / 100:.0f} {b.position.upper()} @ ${b.price_cents / 100:.2f} - {b.market_title}"
+            for b in losses
+        ]
+        add_chunked_fields(embed, f"❌ Losses ({len(losses)})", losses_lines)
 
     await interaction.followup.send(embed=embed, ephemeral=True)
 
